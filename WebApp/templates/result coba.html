@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draggable Points on Image</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-box {
+            position: relative;
+            margin: 10px;
+        }
+
+        #image, #dynamic-image {
+            max-width: 500px;
+            height: auto;
+            display: block;
+        }
+
+        .point {
+            position: absolute;
+            width: 5px; /* Ubah ukuran titik di sini */
+            height: 5px; /* Ubah ukuran titik di sini */
+            background-color: green;
+            border-radius: 50%;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="image-box">
+            <img src="{{ url_for('static', filename=original_image) }}" alt="Original Image" id="image">
+        </div>
+        <div class="image-box">
+            <img src="{{ url_for('static', filename=uploaded_image) }}" alt="Dynamic Image" id="dynamic-image">
+            <!-- Points will be injected here by JavaScript -->
+        </div>
+    </div>
+    <div>
+        <button type="button" onclick="saveImage()">Simpan Gambar</button>
+        <button type="button" onclick="saveAnnotations()">Simpan Anotasi</button>
+        <button type="button" onclick="goToHomePage()">Kembali ke Halaman Utama</button>
+    </div>
+    <script>
+        // Data from Flask
+        let xCoords = {{ x_coords_pred | tojson }};
+        let yCoords = {{ y_coords_pred | tojson }};
+        const originalWidth = {{ width }} * 0.987; // Width of the original image
+        const originalHeight = {{ height }} * 0.995; // Height of the original image
+
+        // Create points dynamically
+        const container = document.querySelector('.image-box:nth-child(2)');
+
+        let points = [];
+        for (let i = 0; i < xCoords.length; i++) {
+            const point = document.createElement('div');
+            point.classList.add('point');
+            points.push(point);
+            container.appendChild(point);
+        }
+
+        let isDragging = false;
+        let currentPoint = null;
+
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('point')) {
+                isDragging = true;
+                currentPoint = e.target;
+                currentPoint.style.cursor = 'grabbing';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                if (currentPoint) {
+                    currentPoint.style.cursor = 'pointer';
+                    currentPoint = null;
+                }
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && currentPoint) {
+                const rect = container.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                currentPoint.style.left = `${x}px`;
+                currentPoint.style.top = `${y}px`;
+            }
+        });
+
+        // Set the dynamic image source and adjust points
+        var Image = document.getElementById("image");
+        var dynamicImage = document.getElementById("dynamic-image");
+        var image_path = "{{ uploaded_image }}";
+        var image_path_dynamic = "{{ path }}";
+        if (image_path) {
+            Image.src = image_path;
+            dynamicImage.src = image_path_dynamic;
+            dynamicImage.onload = function() {
+                const dynamicImageRect = dynamicImage.getBoundingClientRect();
+                const offsetX = dynamicImageRect.left;
+                const offsetY = dynamicImageRect.top;
+                const scaleX = dynamicImageRect.width / originalWidth;
+                const scaleY = dynamicImageRect.height / originalHeight;
+
+                for (let i = 0; i < xCoords.length; i++) {
+                    const point = points[i];
+                    point.style.left = `${xCoords[i] * scaleX}px`;
+                    point.style.top = `${yCoords[i] * scaleY}px`;
+                }
+            };
+        }
+
+        function saveImage() {
+            // Update coordinates based on current positions
+            const dynamicImageRect = dynamicImage.getBoundingClientRect();
+            const scaleX = originalWidth / dynamicImageRect.width;
+            const scaleY = originalHeight / dynamicImageRect.height;
+
+            xCoords = points.map(point => parseFloat(point.style.left) * scaleX);
+            yCoords = points.map(point => parseFloat(point.style.top) * scaleY);
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = document.getElementById('dynamic-image');
+
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            ctx.drawImage(img, 0, 0);
+
+            // Draw the points on the canvas
+            for (let i = 0; i < xCoords.length; i++) {
+                ctx.beginPath();
+                ctx.arc(xCoords[i], yCoords[i], 5, 0, 2 * Math.PI, false);
+                ctx.fillStyle = 'green';
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#003300';
+                ctx.stroke();
+            }
+
+            const dataURL = canvas.toDataURL('image/png');
+            const filename = "{{ path.split('/').pop() }}";
+
+            fetch('/save_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: dataURL,
+                    filename: filename,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                console.log(data.path);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+        function saveAnnotations() {
+            const dynamicImageRect = dynamicImage.getBoundingClientRect();
+            const scaleX = originalWidth / dynamicImageRect.width;
+            const scaleY = originalHeight / dynamicImageRect.height;
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Index,X,Y\n"; // Header CSV
+
+            points.forEach((point, index) => {
+                const x = parseFloat(point.style.left) * scaleX;
+                const y = parseFloat(point.style.top) * scaleY;
+                csvContent += `${index},${x},${y}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "annotations.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        function goToHomePage() {
+            window.location.href = '/'; // Sesuaikan dengan URL halaman utama yang sebenarnya
+        }
+    </script>
+</body>
+</html>
