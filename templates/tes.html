@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draggable Points on Image</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            position: relative;
+        }
+
+        #image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .point {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            border-radius: 50%;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="../static/ceph.png" alt="Your Image" id="image">
+        <!-- Generate 32 points dynamically -->
+        <script>
+            for (let i = 0; i < 32; i++) {
+                document.write('<div class="point" id="point' + i + '"></div>');
+            }
+        </script>
+    </div>
+    <script>
+        const points = document.querySelectorAll('.point');
+        let isDragging = false;
+        let currentPoint = null;
+
+        points.forEach(point => {
+            point.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                currentPoint = point;
+                point.style.cursor = 'grabbing';
+            });
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                if (currentPoint) {
+                    currentPoint.style.cursor = 'pointer';
+                    currentPoint = null;
+                }
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && currentPoint) {
+                const rect = currentPoint.parentElement.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                currentPoint.style.left = `${x}px`;
+                currentPoint.style.top = `${y}px`;
+            }
+        });
+    </script>
+</body>
+</html>

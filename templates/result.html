@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Prediction Result</title>
+</head>
+<body>
+    <h1>Prediction Result</h1>
+    <img src="{{ url_for('static', filename=image_path.split('/')[-1]) }}" alt="Cephalogram">
+    <h2>Predictions:</h2>
+    <ul>
+        {% for point in predictions %}
+            <li>Landmark {{ loop.index }}: ({{ point[0] }}, {{ point[1] }})</li>
+        {% endfor %}
+    </ul>
+    <h2>Visualized Predictions:</h2>
+    <img src="{{ url_for('static', filename='uploads/temp_visualization.png') }}" alt="Visualized Predictions">
+    <a href="{{ url_for('index') }}">Upload Another Image</a>
+</body>
+</html>

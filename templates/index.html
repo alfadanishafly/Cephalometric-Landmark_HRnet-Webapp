@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Upload Cephalogram</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            align-items: center;
+            background-color: #f4f4f4;
+        }
+        .container {
+            width: 900px;
+            display: flex;
+            justify-content: space-between;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .example, .upload {
+            width: 48%;
+            padding: 20px;
+            background-color: #ccc;
+            text-align: center;
+        }
+        .upload {
+            background-color: #fff;
+        }
+        input[type="file"], input[type="submit"] {
+            margin-top: 20px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="example">
+            <h2>Contoh Gambar Cephalogram yang Sudah Dianotasi</h2>
+            <img src="../static/ceph.png" alt="Annotated Cephalogram Example">
+        </div>
+        <div class="upload">
+            <h2>Upload Cephalogram</h2>
+            <form method="post" enctype="multipart/form-data" action="{{ url_for('predict') }}">
+                <input type="file" name="image" accept="image/*" required>
+                <input type="submit" value="Upload">
+            </form>
+        </div>
+    </div>
+</body>
+</html>
